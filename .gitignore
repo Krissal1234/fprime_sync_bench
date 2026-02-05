@@ -1,0 +1,20 @@
+# F' Build Artifacts
+build-fprime-directory/
+f-prime/
+fplog/
+*.pyc
+__pycache__/
+
+# Tooling and Environment
+fprime-venv/
+.venv/
+bin/
+lib/
+include/
+share/
+pyvenv.cfg
+
+# IDEs and OS
+.vscode/
+.idea/
+.DS_Store
