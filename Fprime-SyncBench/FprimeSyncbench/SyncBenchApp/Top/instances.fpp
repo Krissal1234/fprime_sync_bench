@@ -51,6 +51,14 @@ module FprimeSyncbench {
     stack size Default.STACK_SIZE \
     priority 44
 
+  instance bufferManager: Svc.BufferManager base id 0x4500
+
+  instance tcpDriver: FprimeSyncbench.TcpDriver base id 0x10006000 \
+    queue size Default.QUEUE_SIZE \
+    stack size Default.STACK_SIZE \
+    priority 45
+
+
   # ----------------------------------------------------------------------
   # Queued component instances
   # ----------------------------------------------------------------------

@@ -20,8 +20,7 @@ module FprimeSyncbench {
         severity activity high id 1\
         format "{}"
 
-        @ Buffer Sender
-        output port BufferSender: Fw.BufferSend
+        output port dataOut: BenchDataPort
 
 
         @ Example port: receiving calls from the rate group

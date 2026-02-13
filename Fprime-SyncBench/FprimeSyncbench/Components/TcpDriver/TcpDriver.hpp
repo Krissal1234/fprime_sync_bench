@@ -8,6 +8,8 @@
 #define FprimeSyncbench_TcpDriver_HPP
 
 #include "FprimeSyncbench/Components/TcpDriver/TcpDriverComponentAc.hpp"
+#include <Drv/Ip/TcpClientSocket.hpp>
+#include <Drv/Ip/IpSocket.hpp>
 
 namespace FprimeSyncbench {
 
@@ -23,6 +25,12 @@ class TcpDriver final : public TcpDriverComponentBase {
 
     //! Destroy TcpDriver object
     ~TcpDriver();
+
+  private:
+
+  Drv::TcpClientSocket m_comm;
+  Drv::SocketDescriptor m_sock_desc;
+
 
   private:
     // ----------------------------------------------------------------------
@@ -42,7 +50,9 @@ class TcpDriver final : public TcpDriverComponentBase {
     void CONNECT_TCP_cmdHandler(FwOpcodeType opCode,  //!< The opcode
                                 U32 cmdSeq,           //!< The command sequence number
                                 const Fw::CmdStringArg& hostname,
-                                U32 hostport) override;
+                                U16 hostport) override;
+
+
 };
 
 }  // namespace FprimeSyncbench

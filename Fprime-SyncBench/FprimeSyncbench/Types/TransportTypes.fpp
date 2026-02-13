@@ -12,5 +12,6 @@ module FprimeSyncbench {
         transport_type : TransportType
         timestamp: U64
     }
+
     port BenchDataPort(data: BenchData)
 }

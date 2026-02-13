@@ -1,14 +1,17 @@
 import time
 import csv
 import socket
+import struct
+import threading
 
 number_of_runs = 35
 tlm_channel_name = "FprimeSyncbench.syncBench.TelemtrySender"
 evt_name = "FprimeSyncbench.syncBench.EventSender"
 fieldnames = ["sequence", "transport_type", "fsw_timestamp_sec", "arrival_timestamp_sec", "latency_ms"]
 
-socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_addr = ('localhost', 10000)
+server_addr = ('127.0.0.1', 10000)
+
+### ------------------------- Telemetry Test -------------------------------
 
 def test_benchmark_telemetry(fprime_test_api):
     results_buffer = []
@@ -40,6 +43,8 @@ def test_benchmark_telemetry(fprime_test_api):
         writer.writerows(results_buffer)
 
     assert len(results_buffer) == number_of_runs
+
+### ------------------------- Events Test -------------------------------
 
 def test_benchmark_events(fprime_test_api):
     results_buffer = []
@@ -77,33 +82,88 @@ def test_benchmark_events(fprime_test_api):
     assert len(results_buffer) == number_of_runs
 
 
+### ------------------------- Buffer Connection Test -------------------------------
+
+
 def test_buffer_connection(fprime_test_api):
+
     results_buffer = []
     fprime_test_api.clear_histories()
 
+    server_thread = threading.Thread(target=start_buffer_server, args=(results_buffer, number_of_runs))
+    server_thread.daemon = True
+    server_thread.start()
+
+    time.sleep(3)
+
+    fprime_test_api.send_command("FprimeSyncbench.tcpDriver.CONNECT_TCP", [server_addr[0], server_addr[1]])
+    time.sleep(1)
+
     fprime_test_api.send_command("FprimeSyncbench.syncBench.BENCH_BUF", [number_of_runs])
 
+    server_thread.join(timeout= number_of_runs * 2)
 
-def start_buffer_server():
+    csv_file = "buffer_bench_results.csv"
+    with open(csv_file, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(results_buffer)
+
+    print(f"Buffer Benchmark Finished, saved {len(results_buffer)} results to {csv_file}")
+
+    assert len(results_buffer) == number_of_runs
+
+
+def start_buffer_server(shared_list, expected_count):
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    receive_count = 0
+
     print("Starting server")
-    socket.bind(server_addr)
-    socket.listen(1)
+    server_socket.bind(server_addr)
+    server_socket.listen(1)
 
-    while True:
+    while receive_count < expected_count:
         print("waiting for connetion")
-        connection, client_addr = socket.accept()
+        connection, client_addr = server_socket.accept()
         try:
             print("Connection from ", client_addr)
-            while True:
-                data = connection.recv(16)
-                if data:
+            while receive_count < expected_count:
 
-                else:
+                # U32 (4) + I32 (4) + U64 (8) = 16
+                data = connection.recv(16)
+                if not data:
                     break
+
+                arrival_time = time.time()
+
+                unpacked = struct.unpack(">IiQ", data)
+
+                seq = unpacked[0]
+                t_type = unpacked[1]
+                fsw_timestamp_usec = unpacked[2]
+                fsw_time_secs = fsw_timestamp_usec / 1000000.0
+
+                shared_list.append({
+                   "sequence": seq,
+                    "transport_type": t_type,
+                    "fsw_timestamp_sec": fsw_time_secs,
+                    "arrival_timestamp_sec": arrival_time,
+                    "latency_ms": (arrival_time - fsw_time_secs) * 1000
+                })
+                receive_count += 1
+
+        except Exception as e:
+            print(f"Server error: {e}")
         finally:
             connection.close()
+            server_socket.close()
 
 
+
+
+
+
+## ------------------------- Write to Telemetry Database time --------------------------------
 def benchmark_telemetry_chnl_time(fprime_test_api):
     # This is only testing the time it takes for fprime to move data from tlmWrite to Svc.TlmChan ( which is the telemetry database, so its negligble)
     number_of_runs = 35

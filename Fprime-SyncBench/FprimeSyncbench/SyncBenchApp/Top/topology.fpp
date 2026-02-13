@@ -33,6 +33,8 @@ module FprimeSyncbench {
     instance comDriver
     instance cmdSeq
     instance syncBench
+    instance tcpDriver
+    instance bufferManager
 
   # ----------------------------------------------------------------------
   # Pattern graph specifiers
@@ -130,6 +132,9 @@ module FprimeSyncbench {
     }
 
     connections SyncBenchApp {
+      syncBench.dataOut -> tcpDriver.dataIn
+      tcpDriver.allocate -> bufferManager.bufferGetCallee
+      tcpDriver.deallocate -> bufferManager.bufferSendIn
 
     }
 

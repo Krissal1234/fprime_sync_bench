@@ -13,6 +13,10 @@
 #include <getopt.h>
 // Used for printf functions
 #include <cstdlib>
+#include <FprimeSyncbench/SyncBenchApp/Top/SyncBenchAppTopology.hpp>
+#include <FprimeSyncbench/Types/BenchDataSerializableAc.hpp> // <-- Added this
+#include <Fw/Types/MallocAllocator.hpp>
+#include <Svc/BufferManager/BufferManager.hpp>
 
 /**
  * \brief print command line help message
@@ -36,6 +40,7 @@ void print_usage(const char* app) {
 static void signalHandler(int signum) {
     FprimeSyncbench::stopRateGroups();
 }
+
 
 /**
  * \brief execute the program

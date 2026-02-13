@@ -44,7 +44,8 @@ void SyncBench ::run_handler(FwIndexType portNum, U32 context) {
         this->log_ACTIVITY_HI_EventSender(data);
         break;
     case TransportType::BUF:
-        /* code */
+        this->dataOut_out(0, data);
+
         break;
     default:
         break;
