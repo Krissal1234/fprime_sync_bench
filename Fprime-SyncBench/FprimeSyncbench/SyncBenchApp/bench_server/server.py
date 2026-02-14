@@ -11,7 +11,7 @@ fieldnames = ["sequence", "transport_type", "fsw_timestamp_sec", "arrival_timest
 
 server_addr = ('127.0.0.1', 10000)
 
-### ------------------------- Telemetry Test -------------------------------
+# ### ------------------------- Telemetry Test -------------------------------
 
 def test_benchmark_telemetry(fprime_test_api):
     results_buffer = []
@@ -37,14 +37,12 @@ def test_benchmark_telemetry(fprime_test_api):
         })
 
 
-    with open("tlm_bench_results.csv", "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(results_buffer)
+    csv_file = "tlm_bench_results.csv"
+    write_to_csv(csv_file, results_buffer)
 
     assert len(results_buffer) == number_of_runs
 
-### ------------------------- Events Test -------------------------------
+# ### ------------------------- Events Test -------------------------------
 
 def test_benchmark_events(fprime_test_api):
     results_buffer = []
@@ -74,18 +72,38 @@ def test_benchmark_events(fprime_test_api):
         })
 
 
-    with open("evt_bench_results.csv", "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(results_buffer)
+    csv_file = "evt_bench_results.csv"
+    write_to_csv(csv_file, results_buffer)
 
     assert len(results_buffer) == number_of_runs
 
 
 ### ------------------------- Buffer Connection Test -------------------------------
 
+def test_buffer_connection_udp(fprime_test_api):
+    results_buffer = []
+    fprime_test_api.clear_histories()
 
-def test_buffer_connection(fprime_test_api):
+    server_thread = threading.Thread(target=start_buffer_server, args=(results_buffer, number_of_runs, True))
+    server_thread.daemon = True
+    server_thread.start()
+
+    time.sleep(3)
+
+    fprime_test_api.send_command("FprimeSyncbench.transportDriver.CONNECT_DRIVER", ["UDP", server_addr[0], server_addr[1]])
+    time.sleep(5)
+
+    fprime_test_api.send_command("FprimeSyncbench.syncBench.BENCH_BUF", [number_of_runs])
+
+    server_thread.join(timeout=number_of_runs * 2)
+
+    csv_file = "UDP_buffer_bench_results.csv"
+    write_to_csv(csv_file, results_buffer)
+
+    assert len(results_buffer) == number_of_runs
+
+
+def test_buffer_connection_tcp(fprime_test_api):
 
     results_buffer = []
     fprime_test_api.clear_histories()
@@ -96,68 +114,76 @@ def test_buffer_connection(fprime_test_api):
 
     time.sleep(3)
 
-    fprime_test_api.send_command("FprimeSyncbench.tcpDriver.CONNECT_TCP", [server_addr[0], server_addr[1]])
+    fprime_test_api.send_command("FprimeSyncbench.transportDriver.CONNECT_DRIVER", ["TCP", server_addr[0], server_addr[1]])
     time.sleep(1)
 
     fprime_test_api.send_command("FprimeSyncbench.syncBench.BENCH_BUF", [number_of_runs])
 
     server_thread.join(timeout= number_of_runs * 2)
 
-    csv_file = "buffer_bench_results.csv"
+
+    csv_file = "TCP_buffer_bench_results.csv"
+
+    write_to_csv(csv_file, results_buffer)
+
+    assert len(results_buffer) == number_of_runs
+
+def start_buffer_server(shared_list, expected_count, use_udp = False):
+    sock_type = socket.SOCK_DGRAM if use_udp else socket.SOCK_STREAM
+    server_socket = socket.socket(socket.AF_INET, sock_type)
+    receive_count = 0
+
+    server_socket.bind(server_addr)
+
+    if not use_udp:
+        server_socket.listen(1)
+
+    try:
+        if not use_udp:
+            # TCP Logic:
+            connection, client_addr = server_socket.accept()
+            while receive_count < expected_count:
+                data = connection.recv(16)
+                if not data: break
+                process_packet(data, shared_list)
+                receive_count += 1
+            connection.close()
+        else:
+            # UDP Logic:
+            print("UDP Server: Ready to receive...")
+            while receive_count < expected_count:
+                data, addr = server_socket.recvfrom(16)
+                print(f"UDP Received packet {receive_count} from {addr}")
+                process_packet(data, shared_list)
+                receive_count += 1
+    except Exception as e:
+        print(f"Server error: {e}")
+    finally:
+        server_socket.close()
+
+def process_packet(data, shared_list):
+    arrival_time = time.time()
+
+    unpacked = struct.unpack(">IiQ", data)
+    fsw_time_secs = unpacked[2] / 1000000.0
+
+    shared_list.append({
+        "sequence": unpacked[0],
+        "transport_type": unpacked[1],
+        "fsw_timestamp_sec": fsw_time_secs,
+        "arrival_timestamp_sec": arrival_time,
+        "latency_ms": (arrival_time - fsw_time_secs) * 1000
+    })
+
+
+def write_to_csv(csv_file, results_buffer):
+
     with open(csv_file, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(results_buffer)
 
-    print(f"Buffer Benchmark Finished, saved {len(results_buffer)} results to {csv_file}")
-
-    assert len(results_buffer) == number_of_runs
-
-
-def start_buffer_server(shared_list, expected_count):
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    receive_count = 0
-
-    print("Starting server")
-    server_socket.bind(server_addr)
-    server_socket.listen(1)
-
-    while receive_count < expected_count:
-        print("waiting for connetion")
-        connection, client_addr = server_socket.accept()
-        try:
-            print("Connection from ", client_addr)
-            while receive_count < expected_count:
-
-                # U32 (4) + I32 (4) + U64 (8) = 16
-                data = connection.recv(16)
-                if not data:
-                    break
-
-                arrival_time = time.time()
-
-                unpacked = struct.unpack(">IiQ", data)
-
-                seq = unpacked[0]
-                t_type = unpacked[1]
-                fsw_timestamp_usec = unpacked[2]
-                fsw_time_secs = fsw_timestamp_usec / 1000000.0
-
-                shared_list.append({
-                   "sequence": seq,
-                    "transport_type": t_type,
-                    "fsw_timestamp_sec": fsw_time_secs,
-                    "arrival_timestamp_sec": arrival_time,
-                    "latency_ms": (arrival_time - fsw_time_secs) * 1000
-                })
-                receive_count += 1
-
-        except Exception as e:
-            print(f"Server error: {e}")
-        finally:
-            connection.close()
-            server_socket.close()
-
+    print(f"Benchmark Finished, saved {len(results_buffer)} results to {csv_file}")
 
 
 

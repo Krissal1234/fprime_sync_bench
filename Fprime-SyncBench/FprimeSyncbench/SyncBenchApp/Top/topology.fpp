@@ -33,7 +33,7 @@ module FprimeSyncbench {
     instance comDriver
     instance cmdSeq
     instance syncBench
-    instance tcpDriver
+    instance transportDriver
     instance bufferManager
 
   # ----------------------------------------------------------------------
@@ -132,9 +132,9 @@ module FprimeSyncbench {
     }
 
     connections SyncBenchApp {
-      syncBench.dataOut -> tcpDriver.dataIn
-      tcpDriver.allocate -> bufferManager.bufferGetCallee
-      tcpDriver.deallocate -> bufferManager.bufferSendIn
+      syncBench.dataOut -> transportDriver.dataIn
+      transportDriver.allocate -> bufferManager.bufferGetCallee
+      transportDriver.deallocate -> bufferManager.bufferSendIn
 
     }
 

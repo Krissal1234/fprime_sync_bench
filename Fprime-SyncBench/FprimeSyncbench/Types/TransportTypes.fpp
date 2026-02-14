@@ -1,10 +1,15 @@
 module FprimeSyncbench {
 
 
-    enum TransportType{
+    enum TransportType {
       TLM @< Telemetry
       EVT @< Event
       BUF @< Buffer
+    }
+
+    enum TransportProtocol {
+      TCP = 0,
+      UDP = 1
     }
 
     struct BenchData {

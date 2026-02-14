@@ -1,10 +1,10 @@
 // ======================================================================
-// \title  TcpDriver.cpp
+// \title  UdpDriver.cpp
 // \author krissal1234
-// \brief  cpp file for TcpDriver component implementation class
+// \brief  cpp file for UdpDriver component implementation class
 // ======================================================================
 
-#include "FprimeSyncbench/Components/TcpDriver/TcpDriver.hpp"
+#include "FprimeSyncbench/Components/UdpDriver/UdpDriver.hpp"
 
 namespace FprimeSyncbench {
 
@@ -12,15 +12,15 @@ namespace FprimeSyncbench {
 // Component construction and destruction
 // ----------------------------------------------------------------------
 
-TcpDriver ::TcpDriver(const char* const compName) : TcpDriverComponentBase(compName) {}
+UdpDriver ::UdpDriver(const char* const compName) : UdpDriverComponentBase(compName) {}
 
-TcpDriver ::~TcpDriver() {}
+UdpDriver ::~UdpDriver() {}
 
 // ----------------------------------------------------------------------
 // Handler implementations for typed input ports
 // ----------------------------------------------------------------------
 
-void TcpDriver ::dataIn_handler(FwIndexType portNum, const FprimeSyncbench::BenchData& data) {
+void UdpDriver ::dataIn_handler(FwIndexType portNum, const FprimeSyncbench::BenchData& data) {
     this->log_ACTIVITY_HI_BufferEvent(data);
 
 
@@ -44,13 +44,13 @@ void TcpDriver ::dataIn_handler(FwIndexType portNum, const FprimeSyncbench::Benc
 
         this->log_WARNING_LO_MemoryAllocationFailed();
     }
-
 }
+
 // ----------------------------------------------------------------------
 // Handler implementations for commands
 // ----------------------------------------------------------------------
 
-void TcpDriver ::CONNECT_TCP_cmdHandler(FwOpcodeType opCode,
+void UdpDriver ::CONNECT_UDP_cmdHandler(FwOpcodeType opCode,
                                         U32 cmdSeq,
                                         const Fw::CmdStringArg& hostname,
                                         U16 hostport) {
@@ -64,6 +64,9 @@ void TcpDriver ::CONNECT_TCP_cmdHandler(FwOpcodeType opCode,
     } else {
         this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::EXECUTION_ERROR);
     }
+
+
+    this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);
 }
 
 }  // namespace FprimeSyncbench

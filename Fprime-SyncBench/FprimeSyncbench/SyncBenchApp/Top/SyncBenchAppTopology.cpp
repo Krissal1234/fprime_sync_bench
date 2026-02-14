@@ -50,12 +50,9 @@ void configureTopology() {
     Svc::BufferManager::BufferBins upBuffMgrBins;
     memset(&upBuffMgrBins, 0, sizeof(upBuffMgrBins));
 
-    // Bin 0: Specifically sized for your BenchData
     upBuffMgrBins.bins[0].bufferSize = BenchData::SERIALIZED_SIZE;
     upBuffMgrBins.bins[0].numBuffers = 50;
 
-    // Setup the bufferManager instance (0x4400 matches your instances.fpp base ID)
-    // We use the 'mallocator' already defined at the top of this file
     bufferManager.setup(0x4400, 0, mallocator, upBuffMgrBins);
 
     // Command sequencer needs to allocate memory
